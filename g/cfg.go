@@ -2,10 +2,11 @@ package g
 
 import (
 	"encoding/json"
-	"github.com/toolkits/file"
 	"log"
 	"strings"
 	"sync"
+
+	"github.com/toolkits/file"
 )
 
 type HttpConfig struct {
@@ -47,7 +48,7 @@ type GraphConfig struct {
 	MaxIdle     int                     `json:"maxIdle"`
 	Replicas    int                     `json:"replicas"`
 	Cluster     map[string]string       `json:"cluster"`
-	ClusterList map[string]*ClusterNode `json:"clusterList"`
+	ClusterList map[string]*ClusterNode `json:"clusterList"` //根据Cluster转换而来，保存graph一个分片的多个保存地址
 }
 
 type TsdbConfig struct {
@@ -117,15 +118,18 @@ func ParseConfig(cfg string) {
 	log.Println("g.ParseConfig ok, file ", cfg)
 }
 
+// 同一个graph分片可以写入多个地址，多个写入地址构成cluster
 // CLUSTER NODE
 type ClusterNode struct {
 	Addrs []string `json:"addrs"`
 }
 
+// 构建graph集群结构
 func NewClusterNode(addrs []string) *ClusterNode {
 	return &ClusterNode{addrs}
 }
 
+// 转换graph配置为graph集群配置结构
 // map["node"]="host1,host2" --> map["node"]=["host1", "host2"]
 func formatClusterItems(cluster map[string]string) map[string]*ClusterNode {
 	ret := make(map[string]*ClusterNode)

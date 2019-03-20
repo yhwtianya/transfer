@@ -14,8 +14,10 @@ func initNodeRings() {
 	GraphNodeRing = newConsistentHashNodesRing(cfg.Graph.Replicas, KeysOfMap(cfg.Graph.Cluster))
 }
 
+// 返回排序的Key列表
 // TODO 考虑放到公共组件库,或utils库
 func KeysOfMap(m map[string]string) []string {
+	// sort.StringSlice排序的[]string
 	keys := make(sort.StringSlice, len(m))
 	i := 0
 	for key, _ := range m {

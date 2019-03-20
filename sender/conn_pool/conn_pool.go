@@ -11,7 +11,7 @@ import (
 
 var ErrMaxConn = fmt.Errorf("maximum connections reached")
 
-//
+// 连接接口
 type NConn interface {
 	io.Closer
 	Name() string
@@ -25,18 +25,20 @@ type ConnPool struct {
 	Address  string
 	MaxConns int
 	MaxIdle  int
-	Cnt      int64
+	Cnt      int64 // 创建连接计数器
 	New      func(name string) (NConn, error)
 
-	active int
-	free   []NConn
-	all    map[string]NConn
+	active int              // 活动连接数
+	free   []NConn          // 保存空闲连接
+	all    map[string]NConn // 保存所有连接
 }
 
+// 创建ConnPool实例
 func NewConnPool(name string, address string, maxConns int, maxIdle int) *ConnPool {
 	return &ConnPool{Name: name, Address: address, MaxConns: maxConns, MaxIdle: maxIdle, Cnt: 0, all: make(map[string]NConn)}
 }
 
+// 输出自身信息
 func (this *ConnPool) Proc() string {
 	this.RLock()
 	defer this.RUnlock()
@@ -45,6 +47,7 @@ func (this *ConnPool) Proc() string {
 		this.Name, this.Cnt, this.active, len(this.all), len(this.free))
 }
 
+// 获取一个连接
 func (this *ConnPool) Fetch() (NConn, error) {
 	this.Lock()
 	defer this.Unlock()
@@ -69,6 +72,7 @@ func (this *ConnPool) Fetch() (NConn, error) {
 	return conn, nil
 }
 
+// 归还连接,归还到free或删除连接
 func (this *ConnPool) Release(conn NConn) {
 	this.Lock()
 	defer this.Unlock()
@@ -81,6 +85,7 @@ func (this *ConnPool) Release(conn NConn) {
 	}
 }
 
+// 强制关闭active的连接
 func (this *ConnPool) ForceClose(conn NConn) {
 	this.Lock()
 	defer this.Unlock()
@@ -89,6 +94,7 @@ func (this *ConnPool) ForceClose(conn NConn) {
 	this.decreActive()
 }
 
+// 释放所有连接
 func (this *ConnPool) Destroy() {
 	this.Lock()
 	defer this.Unlock()
@@ -110,6 +116,7 @@ func (this *ConnPool) Destroy() {
 	this.all = map[string]NConn{}
 }
 
+// 创建新rpcConn，名称：address_创建计数_创建时间
 // internal, concurrently unsafe
 func (this *ConnPool) newConn() (NConn, error) {
 	name := fmt.Sprintf("%s_%d_%d", this.Name, this.Cnt, time.Now().Unix())
@@ -126,6 +133,7 @@ func (this *ConnPool) newConn() (NConn, error) {
 	return conn, nil
 }
 
+// 删除连接
 func (this *ConnPool) deleteConn(conn NConn) {
 	if conn != nil {
 		conn.Close()
@@ -133,10 +141,12 @@ func (this *ConnPool) deleteConn(conn NConn) {
 	delete(this.all, conn.Name())
 }
 
+// 增加空闲连接
 func (this *ConnPool) addFree(conn NConn) {
 	this.free = append(this.free, conn)
 }
 
+// 获取空闲连接
 func (this *ConnPool) fetchFree() NConn {
 	if len(this.free) == 0 {
 		return nil
@@ -147,18 +157,22 @@ func (this *ConnPool) fetchFree() NConn {
 	return conn
 }
 
+// 增加active
 func (this *ConnPool) increActive() {
 	this.active += 1
 }
 
+// 减少active
 func (this *ConnPool) decreActive() {
 	this.active -= 1
 }
 
+// 是否超过最大活动连接数
 func (this *ConnPool) overMax() bool {
 	return this.active >= this.MaxConns
 }
 
+// 是否超过最大空闲数
 func (this *ConnPool) overMaxIdle() bool {
 	return len(this.free) >= this.MaxIdle
 }

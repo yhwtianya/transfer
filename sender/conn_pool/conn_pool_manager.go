@@ -8,7 +8,12 @@ import (
 	"time"
 )
 
+// 封装rpc.Client
 // RpcCient, 要实现io.Closer接口
+/*
+type Closer interface {
+	Close() error
+*/
 type RpcClient struct {
 	cli  *rpc.Client
 	name string
@@ -35,6 +40,7 @@ func (this RpcClient) Call(method string, args interface{}, reply interface{}) e
 	return this.cli.Call(method, args, reply)
 }
 
+// 管理ConnPools
 // ConnPools Manager
 type SafeRpcConnPools struct {
 	sync.RWMutex
@@ -45,12 +51,14 @@ type SafeRpcConnPools struct {
 	CallTimeout int
 }
 
+// 对每个rpc address创建一个ConnPool
 func CreateSafeRpcConnPools(maxConns, maxIdle, connTimeout, callTimeout int, cluster []string) *SafeRpcConnPools {
 	cp := &SafeRpcConnPools{M: make(map[string]*ConnPool), MaxConns: maxConns, MaxIdle: maxIdle,
 		ConnTimeout: connTimeout, CallTimeout: callTimeout}
 
 	ct := time.Duration(cp.ConnTimeout) * time.Millisecond
 	for _, address := range cluster {
+		// 防止address重复
 		if _, exist := cp.M[address]; exist {
 			continue
 		}
@@ -60,6 +68,7 @@ func CreateSafeRpcConnPools(maxConns, maxIdle, connTimeout, callTimeout int, clu
 	return cp
 }
 
+// 所有连接的描述信息
 func (this *SafeRpcConnPools) Proc() []string {
 	procs := []string{}
 	for _, cp := range this.M {
@@ -103,6 +112,7 @@ func (this *SafeRpcConnPools) Call(addr, method string, args interface{}, resp i
 	}
 }
 
+// 获取连接池
 func (this *SafeRpcConnPools) Get(address string) (*ConnPool, bool) {
 	this.RLock()
 	defer this.RUnlock()
@@ -110,6 +120,7 @@ func (this *SafeRpcConnPools) Get(address string) (*ConnPool, bool) {
 	return p, exists
 }
 
+// 释放所有连接池
 func (this *SafeRpcConnPools) Destroy() {
 	this.Lock()
 	defer this.Unlock()
@@ -124,6 +135,7 @@ func (this *SafeRpcConnPools) Destroy() {
 	}
 }
 
+// 创建一个rpcConnPool，指定New函数用于创建一个rpcConn
 func createOnePool(name string, address string, connTimeout time.Duration, maxConns int, maxIdle int) *ConnPool {
 	p := NewConnPool(name, address, maxConns, maxIdle)
 	p.New = func(connName string) (NConn, error) {
@@ -145,6 +157,7 @@ func createOnePool(name string, address string, connTimeout time.Duration, maxCo
 	return p
 }
 
+// TSDB使用的socket，非rpc
 // TSDB
 type TsdbClient struct {
 	cli  net.Conn
@@ -168,6 +181,7 @@ func (this TsdbClient) Close() error {
 	return nil
 }
 
+// 创建一个TSDBConnPool，指定New函数用于创建一个socketConn
 func newTsdbConnPool(address string, maxConns int, maxIdle int, connTimeout int) *ConnPool {
 	pool := NewConnPool("tsdb", address, maxConns, maxIdle)
 
@@ -188,6 +202,7 @@ func newTsdbConnPool(address string, maxConns int, maxIdle int, connTimeout int)
 	return pool
 }
 
+// TsdbConn管理器
 type TsdbConnPoolHelper struct {
 	p           *ConnPool
 	maxConns    int
@@ -197,6 +212,7 @@ type TsdbConnPoolHelper struct {
 	address     string
 }
 
+// 创建连接池
 func NewTsdbConnPoolHelper(address string, maxConns, maxIdle, connTimeout, callTimeout int) *TsdbConnPoolHelper {
 	return &TsdbConnPoolHelper{
 		p:           newTsdbConnPool(address, maxConns, maxIdle, connTimeout),
@@ -208,6 +224,7 @@ func NewTsdbConnPoolHelper(address string, maxConns, maxIdle, connTimeout, callT
 	}
 }
 
+// 发送数据
 func (this *TsdbConnPoolHelper) Send(data []byte) (err error) {
 	conn, err := this.p.Fetch()
 	if err != nil {
@@ -239,6 +256,7 @@ func (this *TsdbConnPoolHelper) Send(data []byte) (err error) {
 	return
 }
 
+// 释放连接
 func (this *TsdbConnPoolHelper) Destroy() {
 	if this.p != nil {
 		this.p.Destroy()

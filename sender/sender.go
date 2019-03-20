@@ -2,12 +2,13 @@ package sender
 
 import (
 	"fmt"
+	"log"
+
 	cmodel "github.com/open-falcon/common/model"
 	"github.com/open-falcon/transfer/g"
 	"github.com/open-falcon/transfer/proc"
 	cpool "github.com/open-falcon/transfer/sender/conn_pool"
 	nlist "github.com/toolkits/container/list"
-	"log"
 )
 
 const (
@@ -29,8 +30,11 @@ var (
 // 发送缓存队列
 // node -> queue_of_data
 var (
-	TsdbQueue   *nlist.SafeListLimited
+	// Tsdb数据缓存队列
+	TsdbQueue *nlist.SafeListLimited
+	// 每个judge节点缓存队列
 	JudgeQueues = make(map[string]*nlist.SafeListLimited)
+	// 每个graph节点缓存队列
 	GraphQueues = make(map[string]*nlist.SafeListLimited)
 )
 
@@ -49,8 +53,9 @@ func Start() {
 	if MinStep < 1 {
 		MinStep = 30 //默认30s
 	}
-	//
+	// 构造judge、tsdb、graph连接池
 	initConnPools()
+	// 构造judge、tsdb、graph数据缓存队列
 	initSendQueues()
 	initNodeRings()
 	// SendTasks依赖基础组件的初始化,要最后启动

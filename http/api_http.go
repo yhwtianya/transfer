@@ -2,11 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"net/http"
+
 	cmodel "github.com/open-falcon/common/model"
 	trpc "github.com/open-falcon/transfer/receiver/rpc"
-	"net/http"
 )
 
+// http上报数据接口
 func configApiHttpRoutes() {
 	http.HandleFunc("/api/push", func(w http.ResponseWriter, req *http.Request) {
 		if req.ContentLength == 0 {

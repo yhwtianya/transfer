@@ -2,13 +2,14 @@ package rpc
 
 import (
 	"fmt"
+	"strconv"
+	"time"
+
 	cmodel "github.com/open-falcon/common/model"
 	cutils "github.com/open-falcon/common/utils"
 	"github.com/open-falcon/transfer/g"
 	"github.com/open-falcon/transfer/proc"
 	"github.com/open-falcon/transfer/sender"
-	"strconv"
-	"time"
 )
 
 type Transfer int
@@ -20,6 +21,7 @@ type TransferResp struct {
 	Latency    int64
 }
 
+// 统计信息,不符合Rpc处理函数规范
 func (t *TransferResp) String() string {
 	s := fmt.Sprintf("TransferResp total=%d, err_invalid=%d, latency=%dms",
 		t.Total, t.ErrInvalid, t.Latency)
@@ -29,20 +31,24 @@ func (t *TransferResp) String() string {
 	return s
 }
 
+// 连通性响应
 func (this *Transfer) Ping(req cmodel.NullRpcRequest, resp *cmodel.SimpleRpcResponse) error {
 	return nil
 }
 
+// 接收通过rpc上报的数据
 func (t *Transfer) Update(args []*cmodel.MetricValue, reply *cmodel.TransferResponse) error {
 	return RecvMetricValues(args, reply, "rpc")
 }
 
+// 接收新数据，检查有消息，然后放入缓存队列
 // process new metric values
 func RecvMetricValues(args []*cmodel.MetricValue, reply *cmodel.TransferResponse, from string) error {
 	start := time.Now()
 	reply.Invalid = 0
 
 	items := []*cmodel.MetaData{}
+	// 过滤无效数据，转换值类型
 	for _, v := range args {
 		if v == nil {
 			reply.Invalid += 1
@@ -76,11 +82,13 @@ func RecvMetricValues(args []*cmodel.MetricValue, reply *cmodel.TransferResponse
 			continue
 		}
 
+		// metric和tag不能过长
 		if len(v.Metric)+len(v.Tags) > 510 {
 			reply.Invalid += 1
 			continue
 		}
 
+		// 对无效时间进行修正
 		// TODO 呵呵,这里需要再优雅一点
 		now := start.Unix()
 		if v.Timestamp <= 0 || v.Timestamp > now*2 {
@@ -100,6 +108,7 @@ func RecvMetricValues(args []*cmodel.MetricValue, reply *cmodel.TransferResponse
 		var vv float64
 		var err error
 
+		// 全转成float64
 		switch cv := v.Value.(type) {
 		case string:
 			vv, err = strconv.ParseFloat(cv, 64)
@@ -123,6 +132,7 @@ func RecvMetricValues(args []*cmodel.MetricValue, reply *cmodel.TransferResponse
 		items = append(items, fv)
 	}
 
+	// 统计
 	// statistics
 	cnt := int64(len(items))
 	proc.RecvCnt.IncrBy(cnt)
@@ -134,6 +144,7 @@ func RecvMetricValues(args []*cmodel.MetricValue, reply *cmodel.TransferResponse
 
 	cfg := g.Config()
 
+	// 放入缓存队列
 	if cfg.Graph.Enabled {
 		sender.Push2GraphSendQueue(items)
 	}

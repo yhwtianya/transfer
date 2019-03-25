@@ -1,14 +1,16 @@
 package http
 
 import (
-	cutils "github.com/open-falcon/common/utils"
-	"github.com/open-falcon/transfer/proc"
-	"github.com/open-falcon/transfer/sender"
 	"net/http"
 	"strconv"
 	"strings"
+
+	cutils "github.com/open-falcon/common/utils"
+	"github.com/open-falcon/transfer/proc"
+	"github.com/open-falcon/transfer/sender"
 )
 
+// 获取统计信息,追踪最新数据,过滤符合条件的最新数据
 func configProcHttpRoutes() {
 	// counter
 	http.HandleFunc("/counter/all", func(w http.ResponseWriter, r *http.Request) {
@@ -25,6 +27,7 @@ func configProcHttpRoutes() {
 		RenderDataJson(w, map[string]interface{}{"min_step": sender.MinStep})
 	})
 
+	// 配置trace哪个数据，并获取最新数据
 	// trace
 	http.HandleFunc("/trace/", func(w http.ResponseWriter, r *http.Request) {
 		urlParam := r.URL.Path[len("/trace/"):]

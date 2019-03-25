@@ -2,13 +2,14 @@ package sender
 
 import (
 	"bytes"
+	"log"
+	"time"
+
 	cmodel "github.com/open-falcon/common/model"
 	"github.com/open-falcon/transfer/g"
 	"github.com/open-falcon/transfer/proc"
 	nsema "github.com/toolkits/concurrent/semaphore"
 	"github.com/toolkits/container/list"
-	"log"
-	"time"
 )
 
 // send
@@ -16,9 +17,11 @@ const (
 	DefaultSendTaskSleepInterval = time.Millisecond * 50 //默认睡眠间隔为50ms
 )
 
+// 启动发送数据到Judge、Graph、Tsdb的协程
 // TODO 添加对发送任务的控制,比如stop等
 func startSendTasks() {
 	cfg := g.Config()
+	// 初始化信号量容量
 	// init semaphore
 	judgeConcurrent := cfg.Judge.MaxConns
 	graphConcurrent := cfg.Graph.MaxConns
@@ -58,8 +61,10 @@ func startSendTasks() {
 func forward2JudgeTask(Q *list.SafeListLimited, node string, concurrent int) {
 	batch := g.Config().Judge.Batch // 一次发送,最多batch条数据
 	addr := g.Config().Judge.Cluster[node]
+	// 信号量，容量为concurrent
 	sema := nsema.NewSemaphore(concurrent)
 
+	// 无限循环，没有停止控制
 	for {
 		items := Q.PopBackBy(batch)
 		count := len(items)
@@ -74,6 +79,7 @@ func forward2JudgeTask(Q *list.SafeListLimited, node string, concurrent int) {
 		}
 
 		//	同步Call + 有限并发 进行发送
+		// 使用信号量进行同一judge地址的并发量控制
 		sema.Acquire()
 		go func(addr string, judgeItems []*cmodel.JudgeItem, count int) {
 			defer sema.Release()
@@ -92,6 +98,7 @@ func forward2JudgeTask(Q *list.SafeListLimited, node string, concurrent int) {
 
 			// statistics
 			if !sendOk {
+				// 发送失败的数据被丢弃了
 				log.Printf("send judge %s:%s fail: %v", node, addr, err)
 				proc.SendToJudgeFailCnt.IncrBy(int64(count))
 			} else {

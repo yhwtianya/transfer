@@ -2,11 +2,13 @@ package http
 
 import (
 	"fmt"
-	"github.com/open-falcon/transfer/sender"
 	"net/http"
 	"strings"
+
+	"github.com/open-falcon/transfer/sender"
 )
 
+// 获取连接池描述信息
 func configDebugHttpRoutes() {
 	// conn pools
 	http.HandleFunc("/debug/connpool/", func(w http.ResponseWriter, r *http.Request) {
@@ -23,8 +25,10 @@ func configDebugHttpRoutes() {
 		receiver := args[0]
 		switch receiver {
 		case "judge":
+			// 获取Judge连接池描述信息
 			result = strings.Join(sender.JudgeConnPools.Proc(), "\n")
 		case "graph":
+			// 获取graph连接池描述信息
 			result = strings.Join(sender.GraphConnPools.Proc(), "\n")
 		default:
 			result = fmt.Sprintf("bad args, module not exist\n")

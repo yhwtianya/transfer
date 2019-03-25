@@ -1,11 +1,13 @@
 package socket
 
 import (
-	"github.com/open-falcon/transfer/g"
 	"log"
 	"net"
+
+	"github.com/open-falcon/transfer/g"
 )
 
+// 处理原始socket的上报数据请求
 func StartSocket() {
 	if !g.Config().Socket.Enabled {
 		return
@@ -26,6 +28,7 @@ func StartSocket() {
 
 	defer listener.Close()
 
+	// 无限循环
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -33,6 +36,7 @@ func StartSocket() {
 			continue
 		}
 
+		// 处理原始socket的上报数据请求
 		go socketTelnetHandle(conn)
 	}
 }

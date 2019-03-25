@@ -3,16 +3,18 @@ package socket
 import (
 	"bufio"
 	"fmt"
-	cmodel "github.com/open-falcon/common/model"
-	"github.com/open-falcon/transfer/g"
-	"github.com/open-falcon/transfer/proc"
-	"github.com/open-falcon/transfer/sender"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	cmodel "github.com/open-falcon/common/model"
+	"github.com/open-falcon/transfer/g"
+	"github.com/open-falcon/transfer/proc"
+	"github.com/open-falcon/transfer/sender"
 )
 
+// 处理原始socket的上报数据请求
 func socketTelnetHandle(conn net.Conn) {
 	defer conn.Close()
 
@@ -50,6 +52,7 @@ func socketTelnetHandle(conn net.Conn) {
 			continue
 		}
 
+		// 转换telnet数据格式为cmodel.MetaData类型
 		item, err := convertLine2MetaData(t[1:])
 		if err != nil {
 			continue
@@ -70,10 +73,12 @@ func socketTelnetHandle(conn net.Conn) {
 		sender.Push2JudgeSendQueue(items)
 	}
 
+	// 这里没有实现发送给TSDB队列
 	return
 
 }
 
+// 转换telnet数据格式为cmodel.MetaData类型
 // example: endpoint counter timestamp value [type] [step]
 // default type is DERIVE, default step is 60s
 func convertLine2MetaData(fields []string) (item *cmodel.MetaData, err error) {

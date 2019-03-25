@@ -1,13 +1,15 @@
 package rpc
 
 import (
-	"github.com/open-falcon/transfer/g"
 	"log"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
+
+	"github.com/open-falcon/transfer/g"
 )
 
+// 启动Rpc服务
 func StartRpc() {
 	if !g.Config().Rpc.Enabled {
 		return
@@ -27,6 +29,7 @@ func StartRpc() {
 	}
 
 	server := rpc.NewServer()
+	// 将Transfer绑定到RpcServer，Transfer的可导出函数用来作为Rpc处理函数
 	server.Register(new(Transfer))
 
 	for {

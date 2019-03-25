@@ -57,9 +57,11 @@ func Start() {
 	initConnPools()
 	// 构造judge、tsdb、graph数据缓存队列
 	initSendQueues()
+	// 初始化judeg、graph哈希环
 	initNodeRings()
 	// SendTasks依赖基础组件的初始化,要最后启动
 	startSendTasks()
+	// 定期任务，比如统计缓存数据量
 	startSenderCron()
 	log.Println("send.Start, ok")
 }
@@ -81,6 +83,7 @@ func Push2JudgeSendQueue(items []*cmodel.MetaData) {
 		}
 		ts := alignTs(item.Timestamp, int64(step))
 
+		// 数据结构转换
 		judgeItem := &cmodel.JudgeItem{
 			Endpoint:  item.Endpoint,
 			Metric:    item.Metric,
@@ -104,6 +107,7 @@ func Push2GraphSendQueue(items []*cmodel.MetaData) {
 	cfg := g.Config().Graph
 
 	for _, item := range items {
+		// 数据结构转换
 		graphItem, err := convert2GraphItem(item)
 		if err != nil {
 			log.Println("E:", err)
@@ -111,6 +115,7 @@ func Push2GraphSendQueue(items []*cmodel.MetaData) {
 		}
 		pk := item.PK()
 
+		// 通过http接口配置访问Trace和Filter数据,这里根据配置进行数据记录
 		// statistics. 为了效率,放到了这里,因此只有graph是enbale时才能trace
 		proc.RecvDataTrace.Trace(pk, item)
 		proc.RecvDataFilter.Filter(pk, item.Value, item)
@@ -176,6 +181,7 @@ func convert2GraphItem(d *cmodel.MetaData) (*cmodel.GraphItem, error) {
 // 将原始数据入到tsdb发送缓存队列
 func Push2TsdbSendQueue(items []*cmodel.MetaData) {
 	for _, item := range items {
+		// 数据结构转换
 		tsdbItem := convert2TsdbItem(item)
 		isSuccess := TsdbQueue.PushFront(tsdbItem)
 
@@ -199,6 +205,7 @@ func convert2TsdbItem(d *cmodel.MetaData) *cmodel.TsdbItem {
 	return &t
 }
 
+// 对齐时间戳到step的整数倍，采用时间向前调整机制
 func alignTs(ts int64, period int64) int64 {
 	return ts - ts%period
 }

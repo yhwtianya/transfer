@@ -10,7 +10,9 @@ import (
 func initNodeRings() {
 	cfg := g.Config()
 
+	// Judge一致性哈希环
 	JudgeNodeRing = newConsistentHashNodesRing(cfg.Judge.Replicas, KeysOfMap(cfg.Judge.Cluster))
+	// Graph一致性哈希环
 	GraphNodeRing = newConsistentHashNodesRing(cfg.Graph.Replicas, KeysOfMap(cfg.Graph.Cluster))
 }
 
@@ -34,6 +36,7 @@ type ConsistentHashNodeRing struct {
 	ring *consistent.Consistent
 }
 
+// 创建一致性哈希环
 func newConsistentHashNodesRing(numberOfReplicas int, nodes []string) *ConsistentHashNodeRing {
 	ret := &ConsistentHashNodeRing{ring: consistent.New()}
 	ret.SetNumberOfReplicas(numberOfReplicas)
@@ -46,12 +49,14 @@ func (this *ConsistentHashNodeRing) GetNode(pk string) (string, error) {
 	return this.ring.Get(pk)
 }
 
+// 添加节点
 func (this *ConsistentHashNodeRing) SetNodes(nodes []string) {
 	for _, node := range nodes {
 		this.ring.Add(node)
 	}
 }
 
+// 设置副本数量
 func (this *ConsistentHashNodeRing) SetNumberOfReplicas(num int) {
 	this.ring.NumberOfReplicas = num
 }

@@ -18,6 +18,7 @@ const (
 )
 
 // 启动发送数据到Judge、Graph、Tsdb的协程
+// 每次都是从队列尾取数据，即将最先进来的数据，发送出去
 // TODO 添加对发送任务的控制,比如stop等
 func startSendTasks() {
 	cfg := g.Config()
@@ -39,6 +40,7 @@ func startSendTasks() {
 		graphConcurrent = 1
 	}
 
+	// 每次都是从队列尾取数据，将最先进来的数据，发送出去
 	// init send go-routines
 	for node, _ := range cfg.Judge.Cluster {
 		queue := JudgeQueues[node]

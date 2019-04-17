@@ -67,6 +67,7 @@ func Start() {
 }
 
 // 将数据 打入 某个Judge的发送缓存队列, 具体是哪一个Judge 由一致性哈希 决定
+// 每次调用，数据总是放到队列最前面
 func Push2JudgeSendQueue(items []*cmodel.MetaData) {
 	for _, item := range items {
 		pk := item.PK()
@@ -103,6 +104,7 @@ func Push2JudgeSendQueue(items []*cmodel.MetaData) {
 }
 
 // 将数据 打入 某个Graph的发送缓存队列, 具体是哪一个Graph 由一致性哈希 决定
+// 每次调用，数据总是放到队列最前面
 func Push2GraphSendQueue(items []*cmodel.MetaData) {
 	cfg := g.Config().Graph
 
@@ -179,6 +181,7 @@ func convert2GraphItem(d *cmodel.MetaData) (*cmodel.GraphItem, error) {
 }
 
 // 将原始数据入到tsdb发送缓存队列
+// 每次调用，数据总是放到队列最前面
 func Push2TsdbSendQueue(items []*cmodel.MetaData) {
 	for _, item := range items {
 		// 数据结构转换

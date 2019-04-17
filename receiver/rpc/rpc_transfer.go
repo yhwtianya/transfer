@@ -41,8 +41,7 @@ func (t *Transfer) Update(args []*cmodel.MetricValue, reply *cmodel.TransferResp
 	return RecvMetricValues(args, reply, "rpc")
 }
 
-// 接收新数据，检查有消息，然后放入缓存队列
-// process new metric values
+// 接收新数据，检查有效性 process new metric values
 func RecvMetricValues(args []*cmodel.MetricValue, reply *cmodel.TransferResponse, from string) error {
 	start := time.Now()
 	reply.Invalid = 0
@@ -144,7 +143,7 @@ func RecvMetricValues(args []*cmodel.MetricValue, reply *cmodel.TransferResponse
 
 	cfg := g.Config()
 
-	// 放入缓存队列
+	// 放入缓存队列,每次调用，数据总是放到队列最前面
 	if cfg.Graph.Enabled {
 		sender.Push2GraphSendQueue(items)
 	}
